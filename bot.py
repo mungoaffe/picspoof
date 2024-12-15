@@ -9,6 +9,9 @@ import tempfile
 # Dein Bot-Token hier einfügen
 TELEGRAM_BOT_TOKEN = '7774391850:AAGzHbtELHP1XSPgbS3XncNfBDMrySMEgEQ'
 
+# Liste der erlaubten Nutzer-IDs
+ALLOWED_USERS = [123456789, 987654321
+
 # Zustände des ConversationHandlers
 REPEAT_COUNT, PHOTO = range(2)
 

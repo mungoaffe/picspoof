@@ -22,7 +22,7 @@ def start_keyboard():
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id if update.message else update.callback_query.from_user.id
     if user_id not in ALLOWED_USERS:
-        await update.message.reply_text("ask for permission with ur id: {user_id}")
+        await update.message.reply_text(f"ask for permission with ur id: {user_id}")
         return ConversationHandler.END
 
     if update.callback_query:

@@ -1,0 +1,12 @@
+python-telegram-bot
+pillow
+piexif
+
+
+
+cd C:\Users\Tim\Desktop\reddit\PIC SPOOF
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin https://github.com/mungoaffe/picspoof.git
+git push -u origin master

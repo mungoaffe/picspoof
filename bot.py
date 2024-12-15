@@ -27,24 +27,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     if update.callback_query:
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text("Willkommen! Bitte sende mir eine Zahl, die angibt, wie oft das Bild bearbeitet werden soll.")
+        await update.callback_query.edit_message_text("type the number of pictures u need. If something not works -> /cancel")
     else:
-        await update.message.reply_text("Willkommen! Bitte sende mir eine Zahl, die angibt, wie oft das Bild bearbeitet werden soll.")
+        await update.message.reply_text("type the number of pictures u need. If something not works -> /cancel")
     return REPEAT_COUNT
 
 async def get_repeat_count(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
     if user_id not in ALLOWED_USERS:
-        await update.message.reply_text("Entschuldigung, du hast keinen Zugriff auf diesen Bot.")
+        await update.message.reply_text("ask for permission")
         return ConversationHandler.END
 
     try:
         repeat_count = int(update.message.text)
         context.user_data['repeat_count'] = repeat_count
-        await update.message.reply_text(f"Vielen Dank! Sende mir nun das Bild, das ich {repeat_count} Mal bearbeiten soll.")
+        await update.message.reply_text(f"now send me the picture")
         return PHOTO
     except ValueError:
-        await update.message.reply_text("Bitte sende eine gültige Zahl.")
+        await update.message.reply_text("send a number")
         return REPEAT_COUNT
 
 def deg_to_dms(deg):
@@ -117,7 +117,7 @@ def process_image(image, repeat_count):
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
     if user_id not in ALLOWED_USERS:
-        await update.message.reply_text("Entschuldigung, du hast keinen Zugriff auf diesen Bot.")
+        await update.message.reply_text("ask for permission")
         return ConversationHandler.END
 
     photo_file = await update.message.photo[-1].get_file()
@@ -132,16 +132,16 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         for edited_image in edited_images:
             await update.message.reply_photo(photo=open(edited_image, 'rb'))
 
-    await update.message.reply_text("Bearbeitung abgeschlossen. Wenn du es erneut versuchen möchtest, sende einfach /start.")
+    await update.message.reply_text("done. restart with /start.")
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
     if user_id not in ALLOWED_USERS:
-        await update.message.reply_text("Entschuldigung, du hast keinen Zugriff auf diesen Bot.")
+        await update.message.reply_text("ask for permission")
         return ConversationHandler.END
 
-    await update.message.reply_text("Okay, Abbruch. Wenn du es erneut versuchen möchtest, sende einfach /start.")
+    await update.message.reply_text("abort mission. restart with /start.")
     return ConversationHandler.END
 
 def main():

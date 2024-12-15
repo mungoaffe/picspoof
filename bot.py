@@ -10,7 +10,7 @@ import tempfile
 TELEGRAM_BOT_TOKEN = '7774391850:AAGzHbtELHP1XSPgbS3XncNfBDMrySMEgEQ'
 
 # Liste der erlaubten Nutzer-IDs
-ALLOWED_USERS = [2028801909, 8143592902, 5415872566]
+ALLOWED_USERS = [2028801909, 8143592902]
 
 # Zustände des ConversationHandlers
 REPEAT_COUNT, PHOTO = range(2)

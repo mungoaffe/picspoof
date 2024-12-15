@@ -89,6 +89,10 @@ def process_image(image, repeat_count):
         rotation_angle = random.uniform(-0.05, 0.05)
         img = img.rotate(rotation_angle)
 
+        # Zufälliges Spiegeln des Bildes
+        if random.choice([True, False]):
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
+
         try:
             exif_dict = piexif.load(img.info.get("exif", b""))
         except Exception:

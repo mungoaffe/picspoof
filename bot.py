@@ -2,7 +2,7 @@ import os
 import random
 from PIL import Image, ImageEnhance
 import piexif
-from telegram import Update, InputFile, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InputFile, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes, ConversationHandler
 import tempfile
 
@@ -10,7 +10,7 @@ import tempfile
 TELEGRAM_BOT_TOKEN = '7774391850:AAGzHbtELHP1XSPgbS3XncNfBDMrySMEgEQ'
 
 # Liste der erlaubten Nutzer-IDs
-ALLOWED_USERS = [2028801909, 6914716289, 8143592902]
+ALLOWED_USERS = [2028801909, 8143592902]
 
 # Zustände des ConversationHandlers
 REPEAT_COUNT, PHOTO = range(2)
@@ -41,7 +41,8 @@ async def get_repeat_count(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     try:
         repeat_count = int(update.message.text)
         context.user_data['repeat_count'] = repeat_count
-        await update.message.reply_text(f"now send me the picture")
+        context.user_data['photos'] = []  # Initialisiere eine Liste für Fotos
+        await update.message.reply_text(f"now send me the pictures")
         return PHOTO
     except ValueError:
         await update.message.reply_text("send a number")
@@ -53,41 +54,70 @@ def deg_to_dms(deg):
     s = (deg - d - m / 60) * 3600
     return [(d, 1), (m, 1), (int(s * 100), 100)]
 
+import piexif
+from PIL import Image
+
 def process_image(image, repeat_count):
     def random_us_coordinates():
-        lat = random.uniform(24.396308, 49.384358)
-        lon = random.uniform(-125.0, -66.93457)
+        lat = random.uniform(24.396308, 49.384358)  # Zufällige US-Breitengrad-Koordinaten
+        lon = random.uniform(-125.0, -66.93457)    # Zufällige US-Längengrad-Koordinaten
         return lat, lon
 
     images = []
     for i in range(repeat_count):
         img = image.copy()
 
-        brightness_factor = random.uniform(0.95, 1.05)
+        # Helligkeit anpassen
+        brightness_factor = random.uniform(0.94, 1.06)
         enhancer = ImageEnhance.Brightness(img)
         img = enhancer.enhance(brightness_factor)
 
-        contrast_factor = random.uniform(0.98, 1.02)
+        # Kontrast anpassen
+        contrast_factor = random.uniform(0.94, 1.06)
         enhancer = ImageEnhance.Contrast(img)
         img = enhancer.enhance(contrast_factor)
 
-        sharpness_factor = random.uniform(0.8, 2.0)
+        # Schärfe anpassen
+        sharpness_factor = random.uniform(0.94, 1.06)
         enhancer = ImageEnhance.Sharpness(img)
         img = enhancer.enhance(sharpness_factor)
 
-        max_pixel_change = 6
-        new_width = img.width + random.randint(-max_pixel_change, max_pixel_change)
-        new_height = img.height + random.randint(-max_pixel_change, max_pixel_change)
+        # Zufällige Änderung der Bildgröße
+        max_pixel_change = 10
+        pixel_change = random.randint(0, max_pixel_change)
+        new_width = img.width - pixel_change
+        new_height = img.height - pixel_change
         new_width = max(1, new_width)
         new_height = max(1, new_height)
         img = img.resize((new_width, new_height), Image.LANCZOS)
 
-        color_factor = random.uniform(0.9, 1.1)
+        # Berechne 0,5% des Randes des Bildes
+        border_percentage_max = 0.01  # Maximal
+        border_percentage = random.uniform(0, border_percentage_max)  
+
+        # Berechne die Schnittpunkte für den Rand
+        left = int(img.width * border_percentage)
+        top = int(img.height * border_percentage)
+        right = img.width - left
+        bottom = img.height - top
+
+        # Stelle sicher, dass die rechte Grenze immer größer ist als die linke
+        if right <= left:
+            right = img.width
+        if bottom <= top:
+            bottom = img.height
+
+        # Schneide den Rand ab
+        img = img.crop((left, top, right, bottom))
+
+        # Farbkorrektur
+        color_factor = random.uniform(0.94, 1.06)
         enhancer = ImageEnhance.Color(img)
         img = enhancer.enhance(color_factor)
 
+        # Rotation des Bildes
         rotation_angle = random.uniform(-0.05, 0.05)
-        img = img.rotate(rotation_angle)
+        img = img.rotate(rotation_angle, expand=True)
 
         # Zufälliges Spiegeln des Bildes
         if random.choice([True, False]):
@@ -98,8 +128,10 @@ def process_image(image, repeat_count):
         except Exception:
             exif_dict = {"Exif": {}, "GPS": {}}
 
-        exif_dict["Exif"] = {}
-
+        # Behalte nur die GPS-Daten und lösche alle anderen EXIF-Daten
+        exif_dict["Exif"] = {}  # Entfernt alle EXIF-Metadaten wie Kamera, Uhrzeit, etc.
+        
+        # Generiere zufällige GPS-Koordinaten
         lat, lon = random_us_coordinates()
         lat_ref = "N" if lat >= 0 else "S"
         lon_ref = "E" if lon >= 0 else "W"
@@ -111,12 +143,15 @@ def process_image(image, repeat_count):
             piexif.GPSIFD.GPSLongitudeRef: lon_ref
         }
 
+        # Speichere die EXIF-Daten in die Bilddatei
         new_exif_data = piexif.dump(exif_dict)
         with tempfile.NamedTemporaryFile(suffix='.jpeg', delete=False) as temp_file:
-            img.save(temp_file, "jpeg", exif=new_exif_data)
+            img.save(temp_file, "jpeg", exif=new_exif_data, quality=95)  # Speichert mit den neuen EXIF-Daten
             images.append(temp_file.name)
 
     return images
+
+import os
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
@@ -127,16 +162,42 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     photo_file = await update.message.photo[-1].get_file()
     with tempfile.NamedTemporaryFile(suffix='.jpeg', delete=False) as temp_file:
         await photo_file.download_to_drive(temp_file.name)
-        photo_path = temp_file.name
+        context.user_data['photos'].append(temp_file.name)  # Foto zur Warteschlange hinzufügen
 
-    with Image.open(photo_path) as img:
-        repeat_count = context.user_data.get('repeat_count', 1)
-        edited_images = process_image(img, repeat_count)
+    if len(context.user_data['photos']) > 1:
+        return PHOTO  # Warte auf weitere Bilder
 
-        for edited_image in edited_images:
-            await update.message.reply_photo(photo=open(edited_image, 'rb'))
+    edited_images = []
+    while context.user_data['photos']:
+        photo_path = context.user_data['photos'].pop(0)  # Bearbeite das erste Foto
+        with Image.open(photo_path) as img:
+            repeat_count = context.user_data.get('repeat_count', 1)
+            edited_images.extend(process_image(img, repeat_count))  # Bilder zur Liste hinzufügen
+
+    # Teile die bearbeiteten Bilder in Gruppen zu je maximal 10
+    for i in range(0, len(edited_images), 10):  # max 10 Bilder pro Gruppe
+        media_group_chunk = edited_images[i:i + 10]  # Erstelle eine Gruppe von bis zu 10 Bildern
+        media = [InputMediaPhoto(media=open(image, 'rb')) for image in media_group_chunk]
+        
+        # Sende das Media-Gruppe
+        await update.message.reply_media_group(media=media)
 
     await update.message.reply_text("done. restart with /start.")
+
+    # Lösche die temporären Bilder, nachdem sie gesendet wurden
+    for photo_path in context.user_data['photos']:
+        try:
+            os.remove(photo_path)  # Löscht die temporären Bilddateien
+        except Exception as e:
+            print(f"Fehler beim Löschen der Datei {photo_path}: {e}")
+
+    # Lösche auch die bearbeiteten Bilder
+    for edited_image in edited_images:
+        try:
+            os.remove(edited_image)  # Löscht die bearbeiteten temporären Bilddateien
+        except Exception as e:
+            print(f"Fehler beim Löschen der bearbeiteten Datei {edited_image}: {e}")
+
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:

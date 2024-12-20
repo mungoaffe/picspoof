@@ -152,7 +152,7 @@ async def process_photos(update: Update, context: ContextTypes.DEFAULT_TYPE):
         media = [InputMediaPhoto(media=open(image, 'rb')) for image in media_group_chunk]
         await update.message.reply_media_group(media=media)
 
-    await update.message.reply_text("Processing complete.")
+    await update.message.reply_text("complete. restart with /start")
 
     # Bereinigen
     for path in photos + edited_images:
@@ -170,7 +170,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text("ask for permission")
         return ConversationHandler.END
 
-    await update.message.reply_text("Operation cancelled. Restart with /start.")
+    await update.message.reply_text("Operation cancelled. restart with /start.")
     return ConversationHandler.END
 
 def main():
